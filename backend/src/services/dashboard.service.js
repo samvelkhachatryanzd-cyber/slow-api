@@ -1,11 +1,19 @@
 const { fn, col, literal } = require('sequelize');
 const { Product, Sale, Owner } = require('../models');
 
-async function getDashboard() {
-  const products = await Product.findAll({
-    include: [{ model: Owner, as: 'owner' }],
-    order: [['name', 'ASC'], ['id', 'ASC']],
-  });
+const PAGE_SIZE = 50;
+
+async function getDashboard(page) {
+  const [products, total] = await Promise.all([
+    Product.findAll({
+      include: [{ model: Owner, as: 'owner' }],
+      order: [['id', 'ASC']],
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
+    Product.count(),
+  ]);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   const salesRows = await Sale.findAll({
     attributes: ['productId', [fn('SUM', col('quantity')), 'units'], [fn('SUM', literal('quantity * price_cents')), 'revenueCents']],
@@ -15,9 +23,16 @@ async function getDashboard() {
   const salesByProduct = {};
   for (const row of salesRows) salesByProduct[row.productId] = row;
 
+  const ownerIds = [...new Set(products.map((product) => product.ownerId))];
   const productCountByOwner = {};
-  for (const product of products) {
-    productCountByOwner[product.ownerId] = (productCountByOwner[product.ownerId] || 0) + 1;
+  if (ownerIds.length > 0) {
+    const countRows = await Product.findAll({
+      attributes: ['ownerId', [fn('COUNT', col('id')), 'productCount']],
+      where: { ownerId: ownerIds },
+      group: ['ownerId'],
+      raw: true,
+    });
+    for (const row of countRows) productCountByOwner[row.ownerId] = Number(row.productCount);
   }
 
   const rows = products.map((product) => {
@@ -49,7 +64,7 @@ async function getDashboard() {
     };
   });
 
-  return { updatedAt: new Date().toISOString(), products: rows };
+  return { page, totalPages, updatedAt: new Date().toISOString(), products: rows };
 }
 
 module.exports = { getDashboard };
