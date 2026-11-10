@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
       category: { type: DataTypes.STRING(40), allowNull: false },
       priceCents: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
       stock: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
+      totalSold: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
       description: { type: DataTypes.TEXT, allowNull: false },
     },
     { tableName: 'products', underscored: true, updatedAt: false }
