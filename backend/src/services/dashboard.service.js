@@ -1,8 +1,11 @@
 const { fn, col, literal } = require('sequelize');
-const { Product, Sale } = require('../models');
+const { Product, Sale, Owner } = require('../models');
 
 async function getDashboard() {
-  const products = await Product.findAll({ order: [['name', 'ASC'], ['id', 'ASC']] });
+  const products = await Product.findAll({
+    include: [{ model: Owner, as: 'owner' }],
+    order: [['name', 'ASC'], ['id', 'ASC']],
+  });
 
   const salesRows = await Sale.findAll({
     attributes: ['productId', [fn('SUM', col('quantity')), 'units'], [fn('SUM', literal('quantity * price_cents')), 'revenueCents']],
@@ -13,15 +16,14 @@ async function getDashboard() {
   for (const row of salesRows) salesByProduct[row.productId] = row;
 
   const productCountByOwner = {};
-  const rows = [];
   for (const product of products) {
-    const owner = await product.getOwner();
-    if (productCountByOwner[owner.id] === undefined) {
-      productCountByOwner[owner.id] = products.filter((p) => p.ownerId === owner.id).length;
-    }
-    const sales = salesByProduct[product.id];
+    productCountByOwner[product.ownerId] = (productCountByOwner[product.ownerId] || 0) + 1;
+  }
 
-    rows.push({
+  const rows = products.map((product) => {
+    const owner = product.owner;
+    const sales = salesByProduct[product.id];
+    return {
       id: product.id,
       name: product.name,
       category: product.category,
@@ -44,8 +46,8 @@ async function getDashboard() {
         createdAt: owner.createdAt,
         productCount: productCountByOwner[owner.id],
       },
-    });
-  }
+    };
+  });
 
   return { updatedAt: new Date().toISOString(), products: rows };
 }
