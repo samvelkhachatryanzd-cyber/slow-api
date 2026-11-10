@@ -10,8 +10,7 @@ export default function ProductRow({ product, open, onToggle }) {
         <td>{product.category}</td>
         <td className="num">{money(product.priceCents)}</td>
         <td className="num">{product.stock}</td>
-        <td className="num">{product.sales.units}</td>
-        <td className="num">{money(product.sales.revenueCents)}</td>
+        <td className="num">{product.totalSold}</td>
       </tr>
       {open && (
         <tr className="owner">
