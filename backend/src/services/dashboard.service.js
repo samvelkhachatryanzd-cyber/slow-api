@@ -1,5 +1,6 @@
 const { fn, col } = require('sequelize');
 const { Product, Owner } = require('../models');
+const { errorHandler } = require("../middleware/errorHandler");
 
 const PAGE_SIZE = 50;
 
@@ -38,6 +39,7 @@ async function getDashboard(page) {
       description: product.description,
       createdAt: product.createdAt,
       totalSold: product.totalSold,
+      ownerId: product.ownerId,
       owner: {
         id: owner.id,
         name: owner.name,
@@ -55,4 +57,10 @@ async function getDashboard(page) {
   return { page, totalPages, updatedAt: new Date().toISOString(), products: rows };
 }
 
-module.exports = { getDashboard };
+async function getOwner(id) {
+  const owner = await Owner.findOne({ where: { id: id } });
+  if (!owner) throw new Error(`Owner not found`);
+  return owner;
+}
+
+module.exports = { getDashboard, getOwner };

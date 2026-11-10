@@ -9,4 +9,8 @@ async function dashboard(req, res) {
   res.json(await service.getDashboard(parsePage(req.query.page)));
 }
 
-module.exports = { dashboard };
+async function owner(req, res) {
+  res.json(await service.getOwner(req.params.id));
+}
+
+module.exports = { dashboard, owner };
