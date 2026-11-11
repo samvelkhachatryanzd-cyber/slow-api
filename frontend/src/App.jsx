@@ -12,6 +12,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
+  const [owner, setOwner] = useState({});
 
   const changePage = useCallback((next) => {
     setPage(next);
@@ -20,6 +21,15 @@ export default function App() {
     setError(null);
     setLoading(true);
   }, []);
+
+  async function fetchOwnerInfo(product) {
+    setOwner({});
+    setOpenId(openId === product.id ? null : product.id);
+    const response = await fetch(`/api/product/${product.ownerId}/owner`);
+    if (!response.ok) throw new Error(`Request failed with status ${response.status}`);
+    const data = await response.json();
+    setOwner(data);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +96,8 @@ export default function App() {
               key={product.id}
               product={product}
               open={openId === product.id}
-              onToggle={() => setOpenId(openId === product.id ? null : product.id)}
+              owner={owner}
+              onToggle={() => fetchOwnerInfo(product)}
             />
           ))}
           </tbody>

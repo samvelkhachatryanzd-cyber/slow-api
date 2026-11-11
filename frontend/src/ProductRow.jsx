@@ -1,8 +1,6 @@
 const money = (cents) => (cents / 100).toFixed(2);
 
-export default function ProductRow({ product, open, onToggle }) {
-  const { owner } = product;
-
+export default function ProductRow({ product, owner, open, onToggle }) {
   return (
     <>
       <tr className={open ? 'product open' : 'product'} onClick={onToggle}>
