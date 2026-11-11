@@ -1,26 +1,49 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useEffect, useState, useSyncExternalStore} from 'react';
 import ProductRow from './ProductRow.jsx';
 import Pagination from './Pagination.jsx';
 
-const REFRESH_MS = 30000;
+const REFRESH_MS = 60000;
+
+const listeners = new Set();
+
+function subscribe(listener) {
+  listeners.add(listener);
+  window.addEventListener('popstate', listener);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('popstate', listener);
+  };
+}
+
+const getSearch = () => window.location.search;
+
+function parsePage(search) {
+  const page = Number(new URLSearchParams(search).get('page'));
+  return Number.isSafeInteger(page) && page >= 1 ? page : 1;
+}
+
+function writePage(page, method) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('page', page);
+  window.history[method]({}, '', url);
+  listeners.forEach((listener) => listener());
+}
+
+const navigate = (page) => {
+  if (page !== parsePage(getSearch())) writePage(page, 'pushState');
+};
+const replacePage = (page) => writePage(page, 'replaceState');
 
 export default function App() {
+  const search = useSyncExternalStore(subscribe, getSearch);
+  const page = parsePage(search);
   const [products, setProducts] = useState([]);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [updatedAt, setUpdatedAt] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState(null);
   const [owner, setOwner] = useState({});
-
-  const changePage = useCallback((next) => {
-    setPage(next);
-    setProducts([]);
-    setOpenId(null);
-    setError(null);
-    setLoading(true);
-  }, []);
 
   async function fetchOwnerInfo(product) {
     setOwner({});
@@ -32,7 +55,16 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (new URLSearchParams(search).get('page') !== String(page)) replacePage(page);
+  }, [search, page]);
+
+  useEffect(() => {
     let cancelled = false;
+
+    setProducts([]);
+    setOpenId(null);
+    setError(null);
+    setLoading(true);
 
     async function load() {
       try {
@@ -42,7 +74,7 @@ export default function App() {
         if (cancelled) return;
 
         if (data.products.length === 0 && page > 1 && data.totalPages > 0) {
-          changePage(data.totalPages);
+          replacePage(data.totalPages);
           return;
         }
 
@@ -64,7 +96,7 @@ export default function App() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [page, changePage]);
+  }, [page]);
 
   let status = 'Loading...';
   if (error) status = `Error: ${error}`;
@@ -79,7 +111,7 @@ export default function App() {
         <span className="status">{status}</span>
       </header>
       <div className="container">
-        <Pagination page={page} totalPages={totalPages} onChange={changePage}/>
+        <Pagination page={page} totalPages={totalPages} onChange={navigate}/>
         <table>
           <thead>
           <tr>
@@ -102,7 +134,7 @@ export default function App() {
           ))}
           </tbody>
         </table>
-        <Pagination page={page} totalPages={totalPages} onChange={changePage}/>
+        <Pagination page={page} totalPages={totalPages} onChange={navigate}/>
       </div>
     </main>
   );
