@@ -60,7 +60,12 @@ async function getDashboard(page) {
 async function getOwner(id) {
   const owner = await Owner.findOne({ where: { id: id } });
   if (!owner) throw new Error(`Owner not found`);
-  return owner;
+  const productCount = await Product.findAll({
+    attributes: [[fn('COUNT', col('id')), 'productCount']],
+    where: { ownerId: owner.id },
+    raw: true,
+  });
+  return { ...owner.dataValues, ...productCount[0] };
 }
 
 module.exports = { getDashboard, getOwner };
